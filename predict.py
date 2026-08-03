@@ -2,6 +2,8 @@ import pandas as pd
 import pandas_ta as ta
 import joblib
 
+
+
 # We load the exact model and scaler trained in our notebook
 model = joblib.load('crypto_model.joblib')
 scaler = joblib.load('crypto_scaler.joblib')
