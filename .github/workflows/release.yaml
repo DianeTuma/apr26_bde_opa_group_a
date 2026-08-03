@@ -54,7 +54,8 @@ jobs:
       - name: Build and Push Streamlit UI Image
         uses: docker/build-push-action@v5
         with:
-          context: ./streamlit
+          context: .
+          file: ./Dockerfile.streamlit
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/crypto-streamlit:latest
