@@ -22,7 +22,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas-ta
           pip install -r requirements.txt
-          
+
       - name: Create dummy model for tests
         run: |
           python -c "import joblib; joblib.dump({}, 'crypto_model.joblib')"
@@ -44,7 +44,8 @@ jobs:
       - name: Build and Push API Backend Image
         uses: docker/build-push-action@v5
         with:
-          context: ./api
+          context: .
+          file: ./Dockerfile.api
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/crypto-api:latest
