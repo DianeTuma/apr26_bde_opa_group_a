@@ -55,7 +55,8 @@ numba==0.61.2
 numpy==2.2.6
 packaging==26.2
 pandas==3.0.3
-pandas-ta==0.4.71b0
+#pandas-ta==0.4.71b0
+git+https://github.com/twopirllc/pandas-ta.git
 parso==0.8.7
 pexpect==4.9.0
 pillow==12.2.0
