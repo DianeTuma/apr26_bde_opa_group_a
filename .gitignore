@@ -1,0 +1,17 @@
+# Base de données & Données volumineuses
+sample_training/
+*.sqlite3
+*.db
+pg_data/
+mongo_data/
+
+# Environnements virtuels & Cache Python
+binance_env/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Fichiers système & logs
+*.log
+.DS_Store

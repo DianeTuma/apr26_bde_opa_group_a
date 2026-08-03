@@ -1,0 +1,24 @@
+# Utilisation d'une image Python légère
+FROM python:3.12-slim
+
+# Définition du dossier de travail dans le conteneur
+WORKDIR /app
+
+# Installation des dépendances système nécessaires à l'installation de certains packages (ex: psycopg2)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie et installation des requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du reste du code de l'application (main.py, predict.py, analytics.py, crypto_model.joblib)
+COPY . .
+
+# Exposition du port utilisé par FastAPI
+EXPOSE 8000
+
+# Commande pour démarrer l'API sans reload pour la production
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,89 @@
+services:
+  mongodb:
+    image : mongo:7.0
+    container_name: my_mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: datascientest
+      MONGO_INITDB_ROOT_PASSWORD: dst123
+    volumes:
+      - ./sample_training:/data/db
+    ports:
+      - 27017:27017
+    networks:
+      - crypto_network
+      
+  db:
+    container_name: pg_container
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: daniel
+      POSTGRES_PASSWORD: datascientest
+      POSTGRES_DB: crypto_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - crypto_network
+
+  # Le Backend du API FastAPI
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: crypto_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+     - DATABASE_URL=postgresql://daniel:datascientest@db:5432/crypto_db
+     - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
+    depends_on:
+      - db
+      - mongodb
+    networks:
+      - crypto_network
+
+
+ # Le Frontend : Dashboard Streamlit
+  streamlit_ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: crypto_streamlit
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+    networks:
+      - crypto_network
+
+# ata Pipeline : Ton script de Streaming autonome
+  # Ce conteneur tourne en continu, écoute l'échangeur et pousse vers mongo et l'api
+  streaming_pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.api # Réutilise le même environnement Python que l'API
+    container_name: crypto_streaming
+    restart: always
+    command: python streaming.py 
+    environment:
+      - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
+      - API_URL=http://api:8000
+    depends_on:
+      - mongodb
+      - api
+    networks:
+      - crypto_network
+
+volumes:
+  postgres_data:
+  mongo_data:
+
+networks:
+  crypto_network:
+    driver: bridge

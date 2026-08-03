@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.git/
+.github/
+.venv/
+binance_env/
+.mongodb/
+**/.*mongodb
+sample_training/
