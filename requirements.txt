@@ -27,4 +27,4 @@ psycopg2-binary==2.9.12
 pytest==9.1.1
 pytest-mock
 flake8
-git+https://github.com/twopirllc/pandas-ta.git@development
+pandas-ta
