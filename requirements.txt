@@ -4,6 +4,8 @@ uvicorn==0.48.0
 starlette==1.2.1
 python-multipart==0.0.32
 httpx==0.28.1
+aiohttp>=3.9.0
+python-dateutil>=2.8.2
 
 # Dashboard UI
 streamlit==1.58.0
@@ -22,9 +24,17 @@ ccxt==4.5.54
 requests==2.34.2
 SQLAlchemy==2.0.50
 psycopg2-binary==2.9.12
+websocket-client==1.9.0
+websockets==16.0
+
 
 # Testing & Quality
 pytest==9.1.1
 pytest-mock
 flake8
 pandas-ta
+
+# Base de données (DB)
+pymongo==4.17.0
+psycopg2-binary>=2.9.0
+SQLAlchemy>=2.0.0
