@@ -1,6 +1,8 @@
+version: '3.8'
+
 services:
   mongodb:
-    image : mongo:7.0
+    image: mongo:7.0
     container_name: my_mongo
     environment:
       MONGO_INITDB_ROOT_USERNAME: datascientest
@@ -11,7 +13,7 @@ services:
       - 27017:27017
     networks:
       - crypto_network
-      
+
   db:
     container_name: pg_container
     image: postgres:16-alpine
@@ -27,30 +29,29 @@ services:
     networks:
       - crypto_network
 
-  # Le Backend du API FastAPI
+  # Le Backend API FastAPI (Tiré de Docker Hub)
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+    image: diane19/crypto-api:latest
     container_name: crypto_api
     restart: always
     ports:
       - "8000:8000"
     environment:
-     - DATABASE_URL=postgresql://daniel:datascientest@db:5432/crypto_db
-     - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
+      - DATABASE_URL=postgresql://daniel:datascientest@db:5432/crypto_db
+      - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
+    volumes:
+      #  On monte le modèle et le scaler du serveur directement dans le conteneur
+      - ./crypto_model.joblib:/app/crypto_model.joblib
+      - ./crypto_scaler.joblib:/app/crypto_scaler.joblib
     depends_on:
       - db
       - mongodb
     networks:
       - crypto_network
 
-
- # Le Frontend : Dashboard Streamlit
+  # Le Frontend : Dashboard Streamlit (Tiré de Docker Hub)
   streamlit_ui:
-    build:
-      context: .
-      dockerfile: Dockerfile.streamlit
+    image: diane19/crypto-streamlit:latest
     container_name: crypto_streamlit
     restart: always
     ports:
@@ -62,18 +63,19 @@ services:
     networks:
       - crypto_network
 
-# ata Pipeline : Ton script de Streaming autonome
-  # Ce conteneur tourne en continu, écoute l'échangeur et pousse vers mongo et l'api
+  # Data Pipeline : Script de Streaming autonome (Réutilise l'image API)
   streaming_pipeline:
-    build:
-      context: .
-      dockerfile: Dockerfile.api # Réutilise le même environnement Python que l'API
+    image: diane19/crypto-api:latest
     container_name: crypto_streaming
     restart: always
     command: python streaming.py 
     environment:
       - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
       - API_URL=http://api:8000
+    volumes:
+      #  On monte le modèle et le scaler du serveur directement dans le conteneur
+      - ./crypto_model.joblib:/app/crypto_model.joblib
+      - ./crypto_scaler.joblib:/app/crypto_scaler.joblib
     depends_on:
       - mongodb
       - api
