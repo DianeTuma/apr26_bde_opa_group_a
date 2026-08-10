@@ -44,18 +44,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Mock database with 3 user roles: admin, trader, viewer
 USERS_DB = {
-    "alice_admin": {
-        "username": "alice_admin",
+    "diane_admin": {
+        "username": "diane_admin",
         "password": "adminpassword123",
         "role": "admin",
     },
-    "bob_trader": {
-        "username": "bob_trader",
+    "nathalie_trader": {
+        "username": "nathalie_trader",
         "password": "traderpassword123",
         "role": "trader",
     },
-    "charlie_viewer": {
-        "username": "charlie_viewer",
+    "vincent_viewer": {
+        "username": "vincent_viewer",
         "password": "viewerpassword123",
         "role": "viewer",
     },
