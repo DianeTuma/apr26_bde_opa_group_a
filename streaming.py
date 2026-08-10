@@ -12,6 +12,29 @@ goal_market = "BTC-USDT"
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://datascientest:dst123@localhost:27017/")
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
+# NEW: Function to get JWT token with a retry loop while waiting for FastAPI to start
+def get_auth_token():
+    login_data = {
+        "username": "nathalie_trader",      # User with 'trader' role
+        "password": "traderpassword123"
+    }
+    while True:
+        try:
+            response = requests.post(f"{API_URL}/token", data=login_data, timeout=5)
+            if response.status_code == 200:
+                print("[✓] Successfully authenticated with FastAPI!", flush=True)
+                return response.json()["access_token"]
+            else:
+                print(f"[!] Authentication failed: {response.text}. Retrying in 5s...", flush=True)
+        except Exception as e:
+            print(f"[!] Waiting for FastAPI to be ready... ({e}). Retrying in 5s...", flush=True)
+        time.sleep(5)
+
+# Récupération du token
+# NEW: Get the token and prepare authorization headers for API requests
+token = get_auth_token()
+headers = {"Authorization": f"Bearer {token}"}
+
 # Secure Mongo connection using the full URL string
 client = pymongo.MongoClient(MONGO_URL)
 db = client["crypto_db"] # we create a db in mongodb "crypto.."
@@ -97,8 +120,8 @@ def on_message(ws, message):
         if evenement["k"]["x"]:  # Candle closed!
             data_clean = clean_data(evenement)
             
-        # store the data in MongoDB
-            # Use upsert at the place of insert_one to avoid duplicate candles on    reconnection
+            # store the data in MongoDB
+            # Use upsert at the place of insert_one to avoid duplicate candles on reconnection
             collection.update_one(
                 {
                     "market": data_clean["market"], 
@@ -127,7 +150,8 @@ def on_message(ws, message):
             # Send the batch to FastAPI for prediction
             try:
                 # Target the endpoint correctly using the API_URL variable
-                response = requests.post(f"{API_URL}/predict", json=last_50_candles)
+                # NEW: Added headers=headers to send the JWT token with the POST request
+                response = requests.post(f"{API_URL}/predict", json=last_50_candles, headers=headers)
                 if response.status_code == 200:
                     print("Prediction Signal:", response.json(), flush=True)
                 else:

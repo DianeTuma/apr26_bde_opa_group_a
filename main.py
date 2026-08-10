@@ -174,13 +174,10 @@ def get_prediction(
         )
 
 @app.get("/stats", tags=["Analytics"])
-def get_market_stats(days: int = Query(default=7, ge=1, le=30),
-    current_user: dict = Depends(require_roles(["viewer", "trader", "admin"]))
-):
+def get_market_stats(days: int = Query(default=7, ge=1, le=30)):
     """
     Endpoint to retrieve key financial metrics for a specific number of past days.
     - **days**: Number of days of historical data to analyze (default: 7, min: 1, max: 30)
-    ALLOWED ROLES: 'viewer','trader' and 'admin'.
     """
     # Fetch recent raw data using the centralized engine
     df = fetch_recent_data(days=days, engine=engine)
