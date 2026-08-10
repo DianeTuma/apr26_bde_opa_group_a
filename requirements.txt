@@ -6,6 +6,8 @@ python-multipart==0.0.32
 httpx==0.28.1
 aiohttp>=3.9.0
 python-dateutil>=2.8.2
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
 
 # Dashboard UI
 streamlit==1.58.0
@@ -34,7 +36,10 @@ pytest-mock
 flake8
 pandas-ta
 
-# Base de données (DB)
+# Databases
 pymongo==4.17.0
 psycopg2-binary>=2.9.0
 SQLAlchemy>=2.0.0
+
+# Prometheus Monitoring
+prometheus-fastapi-instrumentator>=7.0.0

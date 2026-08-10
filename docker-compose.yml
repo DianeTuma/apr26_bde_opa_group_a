@@ -29,7 +29,7 @@ services:
     networks:
       - crypto_network
 
-  # Le Backend API FastAPI (Tiré de Docker Hub)
+  # FastAPI Backend API
   api:
     image: diane19/crypto-api:latest
     container_name: crypto_api
@@ -40,7 +40,6 @@ services:
       - DATABASE_URL=postgresql://daniel:datascientest@db:5432/crypto_db
       - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
     volumes:
-      #  On monte le modèle et le scaler du serveur directement dans le conteneur
       - ./crypto_model.joblib:/app/crypto_model.joblib
       - ./crypto_scaler.joblib:/app/crypto_scaler.joblib
     depends_on:
@@ -49,7 +48,7 @@ services:
     networks:
       - crypto_network
 
-  # Le Frontend : Dashboard Streamlit (Tiré de Docker Hub)
+  # Streamlit Frontend Dashboard
   streamlit_ui:
     image: diane19/crypto-streamlit:latest
     container_name: crypto_streamlit
@@ -63,7 +62,7 @@ services:
     networks:
       - crypto_network
 
-  # Data Pipeline : Script de Streaming autonome (Réutilise l'image API)
+  # Streaming Data Pipeline
   streaming_pipeline:
     image: diane19/crypto-api:latest
     container_name: crypto_streaming
@@ -73,12 +72,39 @@ services:
       - MONGO_URL=mongodb://datascientest:dst123@mongodb:27017/
       - API_URL=http://api:8000
     volumes:
-      #  On monte le modèle et le scaler du serveur directement dans le conteneur
       - ./crypto_model.joblib:/app/crypto_model.joblib
       - ./crypto_scaler.joblib:/app/crypto_scaler.joblib
     depends_on:
       - mongodb
       - api
+    networks:
+      - crypto_network
+
+  # Prometheus Metrics Collector
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - api
+    networks:
+      - crypto_network
+
+  # Grafana Dashboard Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
     networks:
       - crypto_network
 

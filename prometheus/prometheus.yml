@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 5s # Collect metrics from the API every 5 seconds
+
+scrape_configs:
+  - job_name: 'crypto-fastapi-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['api:8000'] # Service name inside docker-compose

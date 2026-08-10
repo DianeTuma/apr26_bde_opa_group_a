@@ -1,16 +1,22 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from typing import List
 import pandas as pd
+from datetime import datetime, timedelta
+import jwt
+
+# Prometheus Instrumentation
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from predict import make_prediction
 from analytics import fetch_recent_data, calculate_key_metrics, engine
 
 app = FastAPI(
     title="Crypto Bot API",
-    description="API endpoints to serve historical metrics and model predictions",
-    version="1.0.0"
+    description="API endpoints with JWT Authentication, RBAC, Prometheus Metrics, and Model Predictions",
+    version="2.0.0"
 )
 
 #  Configure the middleware CORS to authorize all local development
@@ -21,6 +27,95 @@ app.add_middleware(
     allow_methods=["*"], # Autorise toutes les méthodes (GET, POST, etc.)
     allow_headers=["*"], # Autorise tous les headers
 )
+
+# Automatically measures HTTP latency, request counts, and error rates
+instrumentator = Instrumentator().instrument(app)
+
+@app.on_event("startup")
+async def startup_prometheus():
+    # Expose public /metrics endpoint for Prometheus scraping
+    instrumentator.expose(app)
+
+SECRET_KEY = "SUPER_SECRET_KEY_FOR_DEMO_PRESENTATION"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Mock database with 3 user roles: admin, trader, viewer
+USERS_DB = {
+    "alice_admin": {
+        "username": "alice_admin",
+        "password": "adminpassword123",
+        "role": "admin",
+    },
+    "bob_trader": {
+        "username": "bob_trader",
+        "password": "traderpassword123",
+        "role": "trader",
+    },
+    "charlie_viewer": {
+        "username": "charlie_viewer",
+        "password": "viewerpassword123",
+        "role": "viewer",
+    },
+}
+
+def create_access_token(data: dict) -> str:
+    """Creates a signed JWT token containing the user identity and role."""
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def require_roles(allowed_roles: List[str]):
+    """Dependency that verifies the JWT token and checks the user role."""
+    def role_checker(token: str = Depends(oauth2_scheme)) -> dict:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_role: str = payload.get("role")
+            username: str = payload.get("sub")
+
+            if not user_role or not username:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token data."
+                )
+
+            if user_role not in allowed_roles:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Access denied. Allowed roles: {allowed_roles}"
+                )
+
+            return payload
+        except jwt.PyJWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token."
+            )
+
+    return role_checker
+
+
+@app.post("/token", tags=["Authentication"])
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Login endpoint to obtain JWT Token for Swagger UI or API clients."""
+    user = USERS_DB.get(form_data.username)
+    if not user or user["password"] != form_data.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect username or password."
+        )
+
+    access_token = create_access_token(
+        data={"sub": user["username"], "role": user["role"]}
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user["role"]
+    }
 
 @app.get("/")
 def read_root():
@@ -106,4 +201,16 @@ def get_latest_prediction(market: str):
     return {
         "market": market,
         "latest_prediction": last_predictions[market]
+    }
+
+@app.post("/admin/retrain")
+def trigger_retrain(current_user: dict = Depends(require_roles(["admin"]))):
+    """
+    Model retraining management endpoint.
+    STRICTLY RESERVED TO ROLE: 'admin'.
+    """
+    return {
+        "status": "Success",
+        "message": "Random Forest model retraining started.",
+        "triggered_by": current_user["sub"]
     }
