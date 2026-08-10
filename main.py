@@ -15,7 +15,7 @@ from analytics import fetch_recent_data, calculate_key_metrics, engine
 
 app = FastAPI(
     title="Crypto Bot API",
-    description="API endpoints with JWT Authentication, RBAC, Prometheus Metrics, and Model Predictions",
+    description="API endpoints with JWT Authentication, RBAC, Prometheus Metrics,Model Predictions and historical analysis",
     version="2.0.0"
 )
 
@@ -117,7 +117,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends()):
         "role": user["role"]
     }
 
-@app.get("/")
+@app.get("/", tags=["General"])
 def read_root():
     return {"message": "Welcome to the API of our Crypto Bot!"}
 
@@ -134,8 +134,15 @@ class KlineData(BaseModel):
 # Endpoint of Prediction
 
 last_predictions = {}
-@app.post("/predict")
-def get_prediction(data: List[KlineData]):
+@app.post("/predict", tags=["ML Model"])
+def get_prediction(
+    data: List[KlineData],
+    current_user: dict = Depends(require_roles(["trader", "admin"]))
+):
+    """
+    ML Prediction endpoint.
+    ALLOWED ROLES: 'trader' and 'admin'.
+    """
     if not data:
         raise HTTPException(status_code=400, detail="The data list cannot be empty.")
         
@@ -166,11 +173,14 @@ def get_prediction(data: List[KlineData]):
             detail=f"An unexpected error occurred during prediction: {str(e)}"
         )
 
-@app.get("/stats")
-def get_market_stats(days: int = Query(default=7, ge=1, le=30)):
+@app.get("/stats", tags=["Analytics"])
+def get_market_stats(days: int = Query(default=7, ge=1, le=30),
+    current_user: dict = Depends(require_roles(["viewer", "trader", "admin"]))
+):
     """
     Endpoint to retrieve key financial metrics for a specific number of past days.
     - **days**: Number of days of historical data to analyze (default: 7, min: 1, max: 30)
+    ALLOWED ROLES: 'viewer','trader' and 'admin'.
     """
     # Fetch recent raw data using the centralized engine
     df = fetch_recent_data(days=days, engine=engine)
@@ -189,11 +199,12 @@ def get_market_stats(days: int = Query(default=7, ge=1, le=30)):
     # Return the results as a clean JSON response
     return metrics
 
-@app.get("/latest-prediction")
+@app.get("/latest-prediction", tags=["Analytics"])
 def get_latest_prediction(market: str):
     """
     Endpoint dedicated to the Streamlit Dashboard. 
     It reads the latest prediction computed from the streaming flow.
+    Publicly accessible to ensure smooth dashboard updates.
     """
     if market not in last_predictions:
         raise HTTPException(status_code=404, detail="Market not supported.")
@@ -203,7 +214,7 @@ def get_latest_prediction(market: str):
         "latest_prediction": last_predictions[market]
     }
 
-@app.post("/admin/retrain")
+@app.post("/admin/retrain", tags=["Admin Operations"])
 def trigger_retrain(current_user: dict = Depends(require_roles(["admin"]))):
     """
     Model retraining management endpoint.
