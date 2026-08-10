@@ -3,10 +3,22 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 import pandas as pd
 
-# On importe l'application et la mémoire globale
-from main import app, last_predictions
+# On importe l'application , la mémoire globale et la fonction de sécurité
+from main import app, last_predictions , create_access_token
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def override_auth():
+    """
+    Génère un faux token Admin valide pour toutes les requêtes de test
+    et l'injecte dans le client via les headers par défaut.
+    """
+    # Crée un vrai JWT signé avec la SECRET_KEY pour contourner require_roles
+    admin_token = create_access_token(data={"sub": "diane_admin", "role": "admin"})
+    client.headers.update({"Authorization": f"Bearer {admin_token}"})
+    yield
+    client.headers.pop("Authorization", None)
 
 @pytest.fixture(autouse=True)
 def reset_predictions():
@@ -95,7 +107,7 @@ def test_get_latest_prediction_not_found():
 def test_get_latest_prediction_success():
     """Vérifie que la route lit correctement la variable globale."""
     # On injecte manuellement une valeur dans le dictionnaire pour le test
-    last_predictions["BTCUSDT"] = {"decision": "SELL", "confidence": 0.75}
+    last_predictions["BTCUSDT"] = {"decision": "SELL", "confidence": 0.65}
     
     response = client.get("/latest-prediction?market=BTCUSDT")
     
